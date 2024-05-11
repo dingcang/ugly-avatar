@@ -267,6 +267,7 @@
     </svg>
     <button @click="generateFace">ANOTHER</button>
     <button @click="downloadSVGAsPNG">DOWNLOAD</button>
+    <button @click="copySVGAsPNG">COPY TO CLIPBOARD</button>
   </div>
 </template>
 
@@ -280,7 +281,21 @@ function randomFromInterval(min, max) {
   // min and max included
   return Math.random() * (max - min) + min;
 }
-
+function svg2CanvasPng(callback) {
+  const svg = document.getElementById("face-svg");
+  const svgData = new XMLSerializer().serializeToString(svg);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const img = document.createElement("img");
+  const svgSize = svg.getBoundingClientRect();
+  canvas.width = svgSize.width;
+  canvas.height = svgSize.height;
+  img.setAttribute("src", "data:image/svg+xml;base64," + btoa(svgData));
+  img.onload = function () {
+    ctx.drawImage(img, 0, 0);
+    callback(canvas);
+  };
+}
 export default {
   name: "FaceGenerator",
   data() {
@@ -517,25 +532,25 @@ export default {
       }
     },
     downloadSVGAsPNG() {
-      // download our svg as png
-      const svg = document.getElementById("face-svg");
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const img = document.createElement("img");
-      const svgSize = svg.getBoundingClientRect();
-      canvas.width = svgSize.width;
-      canvas.height = svgSize.height;
-      img.setAttribute("src", "data:image/svg+xml;base64," + btoa(svgData));
-      img.onload = function () {
-        ctx.drawImage(img, 0, 0);
+      svg2CanvasPng((canvas) => {
         const a = document.createElement("a");
         const e = new MouseEvent("click");
         a.download = "face.png";
         a.href = canvas.toDataURL("image/png");
         a.dispatchEvent(e);
-      };
+      })
     },
+    copySVGAsPNG() {
+      svg2CanvasPng((canvas) => {
+        canvas.toBlob(blob => {
+          navigator.clipboard.write([
+            new ClipboardItem({
+              [blob.type]: blob,
+            }),
+          ]);
+        })
+      })
+    }
   },
   mounted() {
     this.generateFace();
